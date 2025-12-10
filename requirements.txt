@@ -1,0 +1,12 @@
+# Core
+Flask==2.3.3
+torch==2.4.0
+torchvision==0.19.0
+Pillow==10.4.0
+numpy==1.26.4
+
+# Optional (nếu bạn muốn dùng FAISS sau này – hiện tại không cần)
+# faiss-cpu==1.8.0
+
+# Chỉ dùng CPU (không cần CUDA)
+--extra-index-url https://download.pytorch.org/whl/cpu

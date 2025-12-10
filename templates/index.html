@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIFAR-10 Image Search | ResNet18 + KNN</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CIFAR-10 Image Search</h1>
+        </header>
+
+        <!-- KHUNG UPLOAD + PREVIEW -->
+        <div class="upload-box">
+            <input type="file" id="fileInput" accept="image/*">
+            <div class="upload-area" id="uploadArea">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h3>Kéo & thả ảnh vào đây</h3>
+                <p>hoặc <span class="click-here">click để chọn</span></p>
+            </div>
+            <div class="preview hidden" id="preview">
+                <img id="previewImg" src="" alt="Preview">
+                <button type="button" id="clearBtn" class="clear-btn"></button>
+            </div>
+        </div>
+
+        <!-- NÚT TÌM ẢNH — TÁCH RIÊNG, SIÊU ỔN ĐỊNH -->
+        <div class="search-action">
+            <button type="button" id="searchButton" class="big-search-btn" disabled>
+                <i class="fas fa-search"></i> TÌM ẢNH TƯƠNG TỰ
+            </button>
+        </div>
+
+        <!-- Loading & Results -->
+        <div id="loading" class="loading hidden">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Đang tìm ảnh tương tự...</p>
+        </div>
+
+        <div id="results" class="results hidden">
+            <h2>Ảnh truy vấn</h2>
+            <img id="queryImg" class="query-img" alt="Query">
+            <h2>Top 10 kết quả</h2>
+            <div id="resultGrid" class="result-grid"></div>
+        </div>
+
+        <!-- Gallery mẫu -->
+        <div class="gallery-section">
+            <h2>Hoặc click ảnh mẫu bên dưới</h2>
+            <div class="gallery">
+                {% for b64 in images %}
+                    <img src="data:image/jpeg;base64,{{ b64 }}"
+                         onclick="searchByIndex({{ loop.index0 }})"
+                         loading="lazy">
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

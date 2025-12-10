@@ -1,0 +1,24 @@
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Data
+data/features/*.npy
+data/features/*.txt
+data/*.zip
+data/cifar-10-batches-py/
+data/features/
+
+# Virtual environment
+venv/
+.env/
+.cifar_pro/
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
