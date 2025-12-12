@@ -46,7 +46,7 @@ header p { font-size: 1.3rem; opacity: 0.9; }
 }
 .clear-btn {
     position: absolute; top: 15px; right: 15px;
-    background: #0af363; color: white; border: none;
+    background: #ff6b6b; color: white; border: none;
     width: 40px; height: 40px; border-radius: 50%;
     font-size: 1.3rem; cursor: pointer;
 }

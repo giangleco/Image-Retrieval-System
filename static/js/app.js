@@ -81,7 +81,7 @@ function displayResults(data) {
             <div class="result-item">
                 <span class="rank">${item.rank}</span>
                 <img src="data:image/jpeg;base64,${item.image}">
-                
+                <div class="dist">Distance: ${item.distance.toFixed(4)}</div>
             </div>`;
     });
     document.getElementById('results').scrollIntoView({behavior:'smooth'});
