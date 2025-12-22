@@ -1,5 +1,4 @@
 import os
-# Dòng này KHẮNG ĐỊNH phải có trên Windows!
 # Một số thư viện (Intel MKL, OpenMP) bị xung đột khi load nhiều lần → chương trình crash
 # Dòng này ép Windows "bỏ qua" lỗi đó và cứ chạy tiếp → không bị tắt đột ngột
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -22,9 +21,6 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)                  # Nếu chưa có thì t
 FEATURES_PATH = os.path.join(OUTPUT_DIR, "features.npy")     # File lưu vector đặc trưng (60000 x 512)
 IMAGELIST_PATH = os.path.join(OUTPUT_DIR, "image_list.txt")  # File lưu 60000 ảnh dưới dạng base64
 
-# ===========================================================
-# CHỈ CHẠY KHI CHẠY TRỰC TIẾP FILE NÀY (python feature_extractor.py)
-# ===========================================================
 if __name__ == '__main__':
     print("Bắt đầu trích xuất deep features từ CIFAR-10 bằng ResNet-18...")
     print(f"Kết quả sẽ được lưu vào: {OUTPUT_DIR}/\n")
