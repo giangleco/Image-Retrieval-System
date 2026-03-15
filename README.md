@@ -13,31 +13,27 @@ Hệ thống hỗ trợ:
 ## 📂 Cấu trúc thư mục dự án
 
 ```
-BTL/
-│── data/
-│   ├── cifar-10-batches-py/        # Bộ dữ liệu CIFAR-10 gốc
-│   └── features/
-│       ├── features.npy            # Ma trận đặc trưng (60000 × 512)
-│       └── image_list.txt          # Ảnh dạng Base64 để hiển thị giao diện
-│
-│── model/                          # (Tuỳ chọn) chứa các mô hình DL mở rộng
-│
-│── src/
-│   ├── feature_extractor.py        # File dùng để trích xuất đặc trưng
-│   └── main.py                     # API backend hoặc script xử lý chính
-│
-│── static/
+Image-Retrieval-System/
+├── Data/                           # Dữ liệu CIFAR-10 (cùng cấp với src/)
+│   └── cifar-10-batches-py/        # Bộ dữ liệu CIFAR-10 gốc
+├── features/                       # Kết quả trích xuất đặc trưng (cùng cấp với src/)
+│   ├── features.npy                # Ma trận đặc trưng (60000 × 512)
+│   └── image_list.txt             # Ảnh dạng Base64 để hiển thị giao diện
+├── src/
+│   ├── Data_process.ipynb          # Notebook: download + tiền xử lý CIFAR-10
+│   ├── Feature_extraction.ipynb   # Notebook: trích xuất đặc trưng ResNet-18
+│   ├── feature_extractor.py      # Script trích xuất đặc trưng (chạy độc lập)
+│   └── main.py                    # Backend Flask + API tìm kiếm
+├── static/
 │   ├── css/
-│   │   └── style.css               # File CSS cho giao diện
+│   │   └── style.css
 │   └── js/
-│       └── app.js                  # Xử lý logic giao diện Web
-│
-│── templates/
-│   └── index.html                  # Giao diện chính của website
-│
-│── .gitignore                      # File cấu hình Git
-│── README.md                       # File mô tả dự án
-│── requirements.txt                # Các thư viện Python cần cài đặt
+│       └── app.js
+├── templates/
+│   └── index.html
+├── BAO_CAO_DANH_GIA.md            # Báo cáo đáp ứng tiêu chí đánh giá đồ án
+├── README.md
+└── requirements.txt
 ```
 
 ---
@@ -52,8 +48,9 @@ BTL/
   - **KNN** (scikit-learn, brute-force)
   - **FAISS** (Facebook AI Similarity Search – công nghệ hiện đại nhất hiện nay)
 - Đánh giá khoa học bằng:
-  - **Tốc độ tìm kiếm** (ms/query)
-  - **Recall@10** (độ chính xác truy xuất)
+  - **Tốc độ tìm kiếm** (ms/query) – so sánh KNN vs FAISS
+  - **Recall@10, Precision@10, AP** (Average Precision) – chất lượng retrieval
+  - **Overlap@10** – độ trùng kết quả giữa KNN và FAISS (Jaccard)
 - Giao diện web **đẹp, responsive**, hỗ trợ upload + preview ảnh
 - Hoạt động hoàn toàn **offline**, không cần Internet sau khi trích xuất dữ liệu
 
@@ -127,11 +124,20 @@ Mỗi lần tìm kiếm (khi dùng ảnh mẫu), terminal sẽ in ra so sánh:
 ======================================================================
 ```
 
+---
 
+## 📋 Báo cáo đánh giá (tiêu chí đồ án)
+
+Các tiêu chí đánh giá đồ án (xác định vấn đề & chiến lược, chỉ số đo lường, cải tiến thuật toán, đánh giá chất lượng mô hình, thảo luận kết quả, hướng cải thiện, tóm tắt giải pháp, điểm thú vị/khó) được trình bày chi tiết trong:
+
+**[BAO_CAO_DANH_GIA.md](BAO_CAO_DANH_GIA.md)**
+
+---
 
 ## 📝 Ghi chú
 - Dự án hoạt động tốt trên CPU, nhưng GPU sẽ nhanh hơn nhiều.
 - Có thể mở rộng dataset khác hoặc model mạnh hơn (ResNet50, ViT…).
+- **Fine-tune ResNet-18:** Chạy notebook `src/Fine_tune_ResNet.ipynb` để huấn luyện ResNet-18 trên CIFAR-10; mô hình lưu tại `model/resnet18_finetuned_cifar10.pt`. Trong `feature_extractor.py` đặt `USE_FINETUNED = True` rồi chạy lại để trích đặc trưng bằng mô hình đã fine-tune (retrieval thường tốt hơn).
 - Có thể mở rộng bằng:
   - Model mạnh hơn (ResNet-50, EfficientNet, ViT)
   - Dataset lớn hơn (ImageNet, LAION)

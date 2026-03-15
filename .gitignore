@@ -1,24 +1,23 @@
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-
-# Data
-data/features/*.npy
-data/features/*.txt
-data/*.zip
-data/cifar-10-batches-py/
-data/features/
-
-# Virtual environment
+# 1. Môi trường ảo Python (Rất nặng và cấu hình riêng theo mỗi máy)
+.venv/
 venv/
-.env/
-.cifar_pro/
-# IDE
-.vscode/
-.idea/
+env/
 
-# OS files
+# 2. Dữ liệu gốc CIFAR-10 (Có thể tự tải lại bằng code, không nên push lên Git)
+Data/
+
+# 3. Kết quả trích xuất đặc trưng (Chứa file .npy và base64 rất nặng)
+features/
+
+# 4. Trọng số mô hình huấn luyện (Rất nặng)
+model/
+
+# 5. Các file rác hệ thống tự sinh ra của Python và Jupyter Notebook
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+
+# 6. Các file rác của Hệ điều hành (MacOS/Windows)
 .DS_Store
 Thumbs.db
