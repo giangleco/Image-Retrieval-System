@@ -17,23 +17,14 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "features")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# BẬT/TẮT DÙNG MÔ HÌNH TRIPLET TẠI ĐÂY
-USE_FINETUNED = True
-FINETUNED_CHECKPOINT = os.path.join(PROJECT_ROOT, "model", "resnet18_triplet_cifar10.pt")
-
-# Tự động đặt tên file dựa vào biến USE_FINETUNED
-if USE_FINETUNED and os.path.isfile(FINETUNED_CHECKPOINT):
-    feature_filename = "features_triplet.npy"
-else:
-    feature_filename = "features_pretrained.npy"
-
+feature_filename = "features.npy"
 FEATURES_PATH = os.path.join(OUTPUT_DIR, feature_filename)
 IMAGELIST_PATH = os.path.join(OUTPUT_DIR, "image_list.txt")
 LABELS_PATH = os.path.join(OUTPUT_DIR, "labels.npy")
 
 if __name__ == '__main__':
     print(">>> BẮT ĐẦU TRÍCH XUẤT ĐẶC TRƯNG CIFAR-10...")
-    print(f"[*] Chế độ: {'TRIPLET LEARNING' if USE_FINETUNED else 'PRE-TRAINED'}")
+    print("[*] Chế độ: PRE-TRAINED (ImageNet)")
     print(f"[*] File lưu: {feature_filename}")
 
     # Tiền xử lý ảnh
@@ -59,35 +50,33 @@ if __name__ == '__main__':
     # ===========================================================
     # 2. KHỞI TẠO MÔ HÌNH 
     # ===========================================================
-    if USE_FINETUNED and os.path.isfile(FINETUNED_CHECKPOINT):
-        model = models.resnet18(weights=None)
-        # Bỏ lớp FC cho khớp kiến trúc Triplet
-        model.fc = torch.nn.Identity() 
-        model.load_state_dict(torch.load(FINETUNED_CHECKPOINT, map_location="cpu"))
-        model = torch.nn.Sequential(*list(model.children())[:-1])
-        print(f"--- Đang dùng mô hình TRIPLET: {FINETUNED_CHECKPOINT}")
-    else:
-        model = models.resnet18(weights="IMAGENET1K_V1")
-        model = torch.nn.Sequential(*list(model.children())[:-1])
-        print("--- Đang dùng mô hình PRE-TRAINED gốc của ImageNet")
+    model = models.resnet18(weights="IMAGENET1K_V1")
+    model = torch.nn.Sequential(*list(model.children())[:-1])
+    
+    # TỰ ĐỘNG NHẬN DIỆN GPU ĐỂ CHẠY NHANH HƠN
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"--- Đang dùng mô hình PRE-TRAINED gốc của ImageNet. Thiết bị xử lý: {device}")
         
-    device = torch.device("cpu")        
     model.eval().to(device)
 
     # Hàm lấy màu thật cho ảnh base64
-    mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
-    std  = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+    mean = torch.tensor([0.485, 0.456, 0.406]).to(device).view(1, 3, 1, 1)
+    std  = torch.tensor([0.229, 0.224, 0.225]).to(device).view(1, 3, 1, 1)
 
-    def denormalize(tensor):
-        tensor = tensor.clone()           
-        tensor = tensor * std + mean      
-        return torch.clamp(tensor, 0, 1)   
+    def denormalize_batch(tensors):
+        """Denormalize cả một batch cùng lúc trên GPU để tối ưu tốc độ"""
+        tensors = tensors.clone()
+        tensors = tensors * std + mean
+        return torch.clamp(tensors, 0, 1)
 
     features = []       
     image_list = []     
     labels_list = []    
 
     print("\n>>> Đang xử lý 60.000 ảnh (sẽ mất vài phút)...")
+
+    # Resize để làm nhẹ file txt Base64
+    thumbnail_resize = transforms.Resize((64, 64))
 
     with torch.no_grad():  
         for batch_idx, (images, labels) in enumerate(full_loader):
@@ -101,12 +90,14 @@ if __name__ == '__main__':
             # Lấy nhãn
             labels_list.append(labels.numpy())
 
-            # Xử lý Base64
-            for img_tensor in images.cpu():         
-                img_tensor = denormalize(img_tensor)  
-                img_pil = transforms.ToPILImage()(img_tensor)  
+            # Xử lý Base64 (Đã tối ưu: Denormalize theo batch + Resize nhỏ lại)
+            denorm_images = denormalize_batch(images)
+            for img_tensor in denorm_images.cpu():         
+                img_pil = transforms.ToPILImage()(img_tensor)
+                img_pil = thumbnail_resize(img_pil) # Thu nhỏ để chống tràn RAM khi lưu file txt
+                
                 buffered = BytesIO()
-                img_pil.save(buffered, format="JPEG", quality=90)  
+                img_pil.save(buffered, format="JPEG", quality=80) # Giảm quality xuống 80 cho nhẹ
                 img_str = base64.b64encode(buffered.getvalue()).decode()  
                 image_list.append(img_str)
 
