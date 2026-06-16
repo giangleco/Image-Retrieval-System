@@ -13,6 +13,15 @@ env/
 model/
 
 
+
 # 6. Các file rác của Hệ điều hành (MacOS/Windows)
 .DS_Store
 Thumbs.db
+
+# 7. Cache Python / build (Lưu ý: uv.lock thì NÊN commit, không bỏ qua)
+__pycache__/
+*.py[cod]
+.ruff_cache/
+build/
+dist/
+*.egg-info/

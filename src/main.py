@@ -10,8 +10,6 @@ import torch
 import torchvision.transforms as transforms
 import torchvision.models as models
 
-from sklearn.preprocessing import normalize
-
 try:
     import faiss
 except ImportError as e:
@@ -52,7 +50,10 @@ all_labels = np.load(LABELS_NPY)
 with open(IMAGE_LIST_TXT, "r") as f:
     image_b64_list = [line.strip() for line in f]
 
-features_normalized = normalize(features, axis=1, norm='l2')
+# Chuẩn hóa L2 theo từng hàng (tương đương sklearn.preprocessing.normalize)
+features_normalized = (
+    features / (np.linalg.norm(features, axis=1, keepdims=True) + 1e-12)
+).astype("float32")
 
 # FAISS Index
 dim = features.shape[1] 

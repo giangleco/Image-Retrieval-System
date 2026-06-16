@@ -1,0 +1,31 @@
+[project]
+name = "image-retrieval-system"
+version = "0.1.0"
+description = "Hệ thống truy xuất ảnh tương tự (CIFAR-10) dùng ResNet-18 + FAISS"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+authors = [{ name = "Giang Lê Hoàng" }]
+dependencies = [
+    "flask==2.3.3",
+    "torch==2.4.0",
+    "torchvision==0.19.0",
+    "pillow==10.4.0",
+    "numpy==1.26.4",
+    "faiss-cpu==1.8.0",
+    "packaging",       # faiss-cpu cần lúc runtime nhưng không tự khai báo
+]
+
+# Đây là một "application" (không phải thư viện cần build/cài thành package),
+# nên không đóng gói project — uv chỉ quản lý môi trường + dependencies.
+[tool.uv]
+package = false
+
+# --- Dùng wheel PyTorch CPU-only (tránh tải bản CUDA rất nặng) ---
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }

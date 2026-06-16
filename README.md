@@ -33,7 +33,8 @@ Image-Retrieval-System/
 │   └── index.html
 ├── BAO_CAO_DANH_GIA.md            # Báo cáo đáp ứng tiêu chí đánh giá đồ án
 ├── README.md
-└── requirements.txt
+├── pyproject.toml                 # Khai báo dependencies (thay cho requirements.txt)
+└── uv.lock                        # Phiên bản thư viện đã khoá (commit lên Git)
 ```
 
 ---
@@ -71,36 +72,51 @@ Image-Retrieval-System/
 
 ## ▶️ Hướng dẫn cài đặt & chạy dự án
 
-### 1. Cài đặt thư viện
+Dự án dùng [**uv**](https://docs.astral.sh/uv/) để quản lý môi trường và thư viện (qua `pyproject.toml` + `uv.lock`).
+
+### **Bước 1 — Cài uv & môi trường**
+
 ```bash
-pip install -r requirements.txt
+# Cài uv (nếu chưa có)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Tạo môi trường ảo + cài đúng phiên bản thư viện đã khoá trong uv.lock
+# (uv tự tải Python 3.12, dùng wheel PyTorch CPU-only)
+uv sync
 ```
 
----
+> ⚠️ **Lưu ý về file dữ liệu:** khi mới `git clone`, repo **chưa có** thư mục `Data/`
+> (bộ CIFAR-10) lẫn `features/` (vector đặc trưng) vì chúng rất nặng nên bị
+> `.gitignore`. Cả hai sẽ được **tự tạo** ở Bước 2 dưới đây.
 
-## ▶️ Chạy hệ thống
+### **Bước 2 — Tải dữ liệu & trích xuất đặc trưng**
 
-### **1. Trích xuất đặc trưng (nếu chưa có):**
+Chạy script này **một lần duy nhất**. Nó sẽ tự động:
+1. **Tải bộ CIFAR-10** (~170MB) về `Data/` nếu chưa có (cần Internet ở lần đầu).
+2. Trích đặc trưng bằng ResNet-18 và ghi 3 file vào `features/`.
 
+```bash
+uv run python src/feature_extractor.py
 ```
-python src/feature_extractor.py
-```
-## 📦 Output của hệ thống trích xuất đặc trưng
+
+**Output sinh ra trong `features/`:**
 
 | File | Mô tả |
 |------|-------|
 | `features.npy` | Ma trận (60000 × 512) chứa embedding của mỗi ảnh |
-| `image_list.txt` | Danh sách ảnh mã hoá Base64 phục vụ frontend |
+| `labels.npy` | Nhãn lớp của từng ảnh |
+| `image_list.txt` | Danh sách ảnh mã hoá Base64 (64×64) phục vụ frontend |
 
----
-### **2. Khởi chạy backend:**
+> 💡 Lần đầu chạy sẽ mất vài phút (tải dữ liệu + tải trọng số ResNet-18 từ Internet).
+> Những lần sau đã có sẵn `Data/` và `features/` nên **không cần chạy lại**.
 
+### **Bước 3 — Khởi chạy web server**
+
+```bash
+uv run python src/main.py
 ```
-python src/main.py
-```
 
-### **3. Mở giao diện Web**
-Truy cập:
+Sau đó mở trình duyệt tại:
 
 ```
 http://localhost:5000

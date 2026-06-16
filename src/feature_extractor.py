@@ -36,8 +36,9 @@ if __name__ == '__main__':
 
     # Tải dữ liệu
     DATA_ROOT = os.path.join(PROJECT_ROOT, "Data")
-    trainset = torchvision.datasets.CIFAR10(root=DATA_ROOT, train=True, download=False, transform=transform)
-    testset  = torchvision.datasets.CIFAR10(root=DATA_ROOT, train=False, download=False, transform=transform)
+    # download=True: tự tải CIFAR-10 (~170MB) về Data/ nếu chưa có; có rồi thì bỏ qua
+    trainset = torchvision.datasets.CIFAR10(root=DATA_ROOT, train=True, download=True, transform=transform)
+    testset  = torchvision.datasets.CIFAR10(root=DATA_ROOT, train=False, download=True, transform=transform)
 
     full_loader = torch.utils.data.DataLoader(
         torch.utils.data.ConcatDataset([trainset, testset]),
