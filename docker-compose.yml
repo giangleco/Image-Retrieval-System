@@ -1,0 +1,19 @@
+# ============================================================================
+#  docker-compose: chạy hệ thống truy xuất ảnh bằng 1 lệnh
+# ============================================================================
+services:
+  web:
+    build: .                      # build image từ Dockerfile cùng thư mục
+    image: image-retrieval-system
+    container_name: image-retrieval
+    ports:
+      - "5000:5000"               # cổng_máy_host : cổng_trong_container
+    volumes:
+      # Mount dữ liệu nặng từ host vào container (KHÔNG nhúng trong image).
+      # Nhờ vậy, file sinh ra trong container vẫn được lưu lại trên máy host.
+      - ./Data:/app/Data          # bộ CIFAR-10 (tự tải khi chạy extractor)
+      - ./features:/app/features  # vector đặc trưng (extractor sinh ra)
+    environment:
+      - PORT=5000
+      - FLASK_DEBUG=0             # tắt chế độ debug khi chạy trong container
+    restart: unless-stopped
