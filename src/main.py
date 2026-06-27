@@ -144,9 +144,14 @@ def search():
     })
 
 if __name__ == "__main__":
+    # host 0.0.0.0 để truy cập được từ ngoài container Docker; PORT đổi qua biến môi trường
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
+
     print("\n" + "="*70)
     print("   HỆ THỐNG TRUY XUẤT ẢNH CIFAR-10")
     print(f"   Dữ liệu đang dùng: {feature_filename}")
-    print("   Server đang chạy tại: http://127.0.0.1:5000")
+    print(f"   Server đang chạy tại: http://localhost:{port}")
     print("="*70 + "\n")
-    app.run(debug=True, port=5000)
+    app.run(host=host, port=port, debug=debug)

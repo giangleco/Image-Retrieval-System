@@ -34,7 +34,10 @@ Image-Retrieval-System/
 ├── BAO_CAO_DANH_GIA.md            # Báo cáo đáp ứng tiêu chí đánh giá đồ án
 ├── README.md
 ├── pyproject.toml                 # Khai báo dependencies (thay cho requirements.txt)
-└── uv.lock                        # Phiên bản thư viện đã khoá (commit lên Git)
+├── uv.lock                        # Phiên bản thư viện đã khoá (commit lên Git)
+├── Dockerfile                     # Định nghĩa image Docker
+├── .dockerignore                  # File loại trừ khi build image
+└── docker-compose.yml             # Cấu hình chạy bằng Docker Compose
 ```
 
 ---
@@ -121,6 +124,69 @@ Sau đó mở trình duyệt tại:
 ```
 http://localhost:5000
 ```
+
+---
+
+## 🐳 Chạy bằng Docker
+
+Nếu không muốn cài uv/Python trực tiếp lên máy, có thể chạy toàn bộ hệ thống bằng Docker.
+
+### Các file Docker trong dự án
+
+| File | Vai trò |
+|------|---------|
+| `Dockerfile` | Định nghĩa cách **đóng gói** ứng dụng thành image: cài thư viện theo `uv.lock`, copy mã nguồn, tải sẵn trọng số ResNet-18. |
+| `.dockerignore` | Liệt kê thứ **không** đưa vào image (`.venv`, `Data/`, `features/`, `.git`…) để build nhẹ & nhanh. |
+| `docker-compose.yml` | Cấu hình chạy: map cổng `5000`, **mount** `Data/` và `features/` từ máy host vào container. |
+
+> 📌 **Vì sao mount volume?** Bộ CIFAR-10 và file đặc trưng rất nặng nên **không** nhúng vào
+> image. Thay vào đó chúng được gắn (mount) từ thư mục trên máy host lúc chạy — file sinh ra
+> trong container vẫn được lưu lại trên máy bạn.
+
+### Bước 1 — Build image
+
+```bash
+docker compose build
+```
+
+### Bước 2 — Tải dữ liệu & trích xuất đặc trưng (chạy 1 lần)
+
+Lệnh dưới chạy script trích xuất **bên trong container**; nhờ mount volume, kết quả
+(`Data/` và `features/`) được ghi ra thư mục dự án trên máy host:
+
+```bash
+docker compose run --rm web uv run python src/feature_extractor.py
+```
+
+### Bước 3 — Khởi chạy web server
+
+```bash
+docker compose up
+```
+
+Mở trình duyệt tại **http://localhost:5000**. Nhấn `Ctrl+C` để dừng, hoặc chạy nền bằng
+`docker compose up -d` và dừng bằng `docker compose down`.
+
+> ⚠️ Phải chạy **Bước 2 trước**. Nếu `features/` còn trống, server sẽ báo lỗi
+> `FileNotFoundError` vì chưa có dữ liệu đặc trưng để tìm kiếm.
+
+#### (Tuỳ chọn) Không dùng compose, chạy bằng `docker` thuần
+
+```bash
+# Build
+docker build -t image-retrieval-system .
+
+# Trích xuất đặc trưng
+docker run --rm -v "$PWD/Data:/app/Data" -v "$PWD/features:/app/features" \
+  image-retrieval-system uv run python src/feature_extractor.py
+
+# Chạy server
+docker run --rm -p 5000:5000 -v "$PWD/features:/app/features" \
+  image-retrieval-system
+```
+
+---
+
 ## 🚀 Nâng cấp nổi bật: Tích hợp FAISS
 Hệ thống sử dụng FAISS (IndexFlatIP + cosine similarity) làm phương pháp tìm kiếm chính thức vì:
 
