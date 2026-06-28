@@ -15,6 +15,29 @@
             <p>Upload ảnh hoặc click ảnh mẫu để tìm 10 ảnh tương tự nhất </p>
         </header>
 
+        <!-- ===================== TRỢ LÝ CHAT TÌM ẢNH ===================== -->
+        <div class="chat-section">
+            <h2><i class="fas fa-robot"></i> Trợ lý tìm ảnh</h2>
+            <p class="chat-hint">Đính kèm một ảnh và gõ yêu cầu, ví dụ:
+                <em>"Tìm cho tôi 10 hình ảnh giống hình trên"</em></p>
+
+            <div id="chatLog" class="chat-log"></div>
+
+            <div class="chat-input-row">
+                <label class="chat-file-btn" title="Đính kèm ảnh">
+                    <i class="fas fa-image"></i>
+                    <input type="file" id="chatFileInput" accept="image/*" hidden>
+                </label>
+                <span id="chatFileName" class="chat-file-name"></span>
+                <input type="text" id="chatText" class="chat-text"
+                       placeholder='Nhập yêu cầu, vd: "tìm 10 ảnh giống ảnh này"'>
+                <button type="button" id="chatSend" class="chat-send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+        <!-- =============================================================== -->
+
         <!-- KHUNG UPLOAD + PREVIEW -->
         <div class="upload-box">
             <input type="file" id="fileInput" accept="image/*">
@@ -27,6 +50,28 @@
                 <img id="previewImg" src="" alt="Preview">
                 <button type="button" id="clearBtn" class="clear-btn"></button>
             </div>
+        </div>
+
+        <!-- TUỲ CHỌN TÌM KIẾM: số kết quả K + lọc theo lớp -->
+        <div class="search-controls">
+            <label>
+                Số kết quả (K):
+                <select id="kSelect">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+            </label>
+            <label>
+                Lọc theo lớp:
+                <select id="classSelect">
+                    <option value="all" selected>Tất cả các lớp</option>
+                    {% for name in classes %}
+                        <option value="{{ loop.index0 }}">{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
         </div>
 
         <!-- NÚT TÌM ẢNH — TÁCH RIÊNG, SIÊU ỔN ĐỊNH -->
@@ -45,7 +90,12 @@
         <div id="results" class="results hidden">
             <h2>Ảnh truy vấn</h2>
             <img id="queryImg" class="query-img" alt="Query">
-            <h2>Top 10 kết quả</h2>
+            <div id="queryLabel" class="query-label"></div>
+
+            <!-- Bảng chỉ số đánh giá (chỉ hiện khi tìm bằng ảnh mẫu có nhãn) -->
+            <div id="metrics" class="metrics hidden"></div>
+
+            <h2 id="resultTitle">Kết quả</h2>
             <div id="resultGrid" class="result-grid"></div>
         </div>
 
@@ -63,5 +113,6 @@
     </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 </html>

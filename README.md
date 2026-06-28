@@ -4,9 +4,13 @@
 Dự án xây dựng một **hệ thống tìm kiếm ảnh tương tự** dựa trên đặc trưng sâu (deep features) từ mô hình **ResNet-18** (pretrained trên ImageNet) trên bộ dữ liệu **CIFAR-10** (60.000 ảnh).
 
 Hệ thống hỗ trợ:
+- **Trợ lý chat**: đính kèm ảnh + gõ câu lệnh tự nhiên (vd *"Tìm cho tôi 10 ảnh giống ảnh này"*, *"tìm 5 ảnh con chó"*) — hiểu số lượng & lớp cần lọc, **chạy offline không cần API key**
 - Upload ảnh bất kỳ hoặc chọn ảnh mẫu
-- Tìm và hiển thị **10 ảnh giống nhất** trong tích tắc
-- So sánh hiệu suất giữa **KNN truyền thống** và **FAISS** (Facebook AI Similarity Search)
+- Tìm và hiển thị **K ảnh giống nhất** (chọn K = 5/10/20/50) trong tích tắc
+- **Lọc kết quả theo lớp** (airplane, cat, dog…) ngay trên giao diện
+- Hiển thị **nhãn lớp + % độ tương đồng** cho từng kết quả
+- Khi tìm bằng ảnh mẫu (có nhãn): hiện **Precision@K, Recall@K, Average Precision** ngay trên web
+- Tìm kiếm vector siêu nhanh bằng **FAISS** (Facebook AI Similarity Search)
 
 ---
 
