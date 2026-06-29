@@ -1,13 +1,14 @@
 
 # 🔍 Hệ thống Truy Xuất Hình Ảnh Tương Tự (Image Retrieval System)
 
-Dự án xây dựng một **hệ thống tìm kiếm ảnh tương tự** dựa trên đặc trưng sâu (deep features) từ mô hình **ResNet-18** (pretrained trên ImageNet) trên bộ dữ liệu **CIFAR-10** (60.000 ảnh).
+Dự án xây dựng một **hệ thống tìm kiếm ảnh tương tự** trên bộ dữ liệu **CIFAR-10** (60.000 ảnh), với **hai cách tìm**:
+- **Tìm bằng ảnh** — đặc trưng sâu từ **ResNet-18** (pretrained ImageNet) + **FAISS**.
+- **Tìm bằng mô tả văn bản** — nhúng ảnh & chữ chung một không gian bằng **CLIP** (vd gõ *"a red truck"*, *"con mèo"*).
 
 Hệ thống hỗ trợ:
-- **Trợ lý chat**: đính kèm ảnh + gõ câu lệnh tự nhiên (vd *"Tìm cho tôi 10 ảnh giống ảnh này"*, *"tìm 5 ảnh con chó"*) — hiểu số lượng & lớp cần lọc, **chạy offline không cần API key**
-- Upload ảnh bất kỳ hoặc chọn ảnh mẫu
-- Tìm và hiển thị **K ảnh giống nhất** (chọn K = 5/10/20/50) trong tích tắc
-- **Lọc kết quả theo lớp** (airplane, cat, dog…) ngay trên giao diện
+- **Trợ lý chat (một khung duy nhất)**: **đính kèm ảnh** để tìm ảnh giống, **hoặc** chỉ **gõ mô tả** — chạy **offline, không cần API key**
+- **Tìm bằng mô tả tự nhiên (CLIP)**, hỗ trợ cả tiếng Việt (vd *"tìm 5 ảnh con chó"*, *"máy bay trên bầu trời"*)
+- Nói kèm **số lượng K** và **lọc theo lớp** ngay trong câu chat (vd *"tìm 20 ảnh con mèo"*)
 - Hiển thị **nhãn lớp + % độ tương đồng** cho từng kết quả
 - Khi tìm bằng ảnh mẫu (có nhãn): hiện **Precision@K, Recall@K, Average Precision** ngay trên web
 - Tìm kiếm vector siêu nhanh bằng **FAISS** (Facebook AI Similarity Search)
@@ -18,30 +19,35 @@ Hệ thống hỗ trợ:
 
 ```
 Image-Retrieval-System/
-├── Data/                           # Dữ liệu CIFAR-10 (cùng cấp với src/)
-│   └── cifar-10-batches-py/        # Bộ dữ liệu CIFAR-10 gốc
-├── features/                       # Kết quả trích xuất đặc trưng (cùng cấp với src/)
-│   ├── features.npy                # Ma trận đặc trưng (60000 × 512)
-│   └── image_list.txt             # Ảnh dạng Base64 để hiển thị giao diện
+├── Data/                           # Dữ liệu CIFAR-10 (tự tải, đã gitignore)
+│   └── cifar-10-batches-py/
+├── features/                       # Kết quả trích xuất (đã gitignore)
+│   ├── features.npy                # Đặc trưng ResNet-18 (60000 × 512) — tìm bằng ảnh
+│   ├── features_clip.npy           # Đặc trưng CLIP (60000 × 512) — tìm bằng mô tả
+│   ├── labels.npy                  # Nhãn lớp của từng ảnh
+│   └── image_list.txt              # Ảnh Base64 (64×64) để hiển thị giao diện
 ├── src/
-│   ├── Data_process.ipynb          # Notebook: download + tiền xử lý CIFAR-10
-│   ├── Feature_extraction.ipynb   # Notebook: trích xuất đặc trưng ResNet-18
-│   ├── feature_extractor.py      # Script trích xuất đặc trưng (chạy độc lập)
-│   └── main.py                    # Backend Flask + API tìm kiếm
+│   ├── feature_extractor.py        # Trích đặc trưng ResNet-18  -> features.npy
+│   ├── clip_extractor.py           # Trích đặc trưng CLIP        -> features_clip.npy
+│   ├── clip_model.py               # Load CLIP + encode ảnh/chữ (kèm dịch Việt→Anh)
+│   ├── chat_agent.py               # Parser câu lệnh chat (rule-based, offline)
+│   └── main.py                     # Backend Flask + API (FAISS, search, /chat)
 ├── static/
 │   ├── css/
 │   │   └── style.css
 │   └── js/
-│       └── app.js
+│       ├── app.js                  # Click ảnh mẫu + hiển thị kết quả
+│       └── chat.js                 # Logic khung chat
 ├── templates/
 │   └── index.html
-├── BAO_CAO_DANH_GIA.md            # Báo cáo đáp ứng tiêu chí đánh giá đồ án
+├── kaggle_extract_clip.py          # Trích đặc trưng CLIP trên Kaggle GPU (nhanh)
+├── BAO_CAO_DANH_GIA.md             # Báo cáo đáp ứng tiêu chí đánh giá đồ án
 ├── README.md
-├── pyproject.toml                 # Khai báo dependencies (thay cho requirements.txt)
-├── uv.lock                        # Phiên bản thư viện đã khoá (commit lên Git)
-├── Dockerfile                     # Định nghĩa image Docker
-├── .dockerignore                  # File loại trừ khi build image
-└── docker-compose.yml             # Cấu hình chạy bằng Docker Compose
+├── pyproject.toml                  # Khai báo dependencies (thay cho requirements.txt)
+├── uv.lock                         # Phiên bản thư viện đã khoá (commit lên Git)
+├── Dockerfile                      # Định nghĩa image Docker
+├── .dockerignore                   # File loại trừ khi build image
+└── docker-compose.yml              # Cấu hình chạy bằng Docker Compose
 ```
 
 ---
@@ -51,14 +57,13 @@ Image-Retrieval-System/
 
 ## 🧠 Mục tiêu & Điểm nổi bật
 
-- Trích xuất **deep features** bằng ResNet-18
-- So sánh hiệu suất giữa:
-  - **KNN** (scikit-learn, brute-force)
-  - **FAISS** (Facebook AI Similarity Search – công nghệ hiện đại nhất hiện nay)
+- Trích xuất **deep features** bằng ResNet-18 (tìm bằng ảnh)
+- **Tìm bằng văn bản (CLIP)**: nhúng ảnh & chữ chung không gian → gõ mô tả ra ảnh, hỗ trợ tiếng Việt
+- Tìm kiếm vector siêu nhanh bằng **FAISS** (Facebook AI Similarity Search) — IndexFlatIP + cosine, exact search
+- **Trợ lý chat** một khung: nhận cả ảnh lẫn mô tả, hiểu số lượng K & lớp từ ngôn ngữ tự nhiên
 - Đánh giá khoa học bằng:
-  - **Tốc độ tìm kiếm** (ms/query) – so sánh KNN vs FAISS
-  - **Recall@10, Precision@10, AP** (Average Precision) – chất lượng retrieval
-  - **Overlap@10** – độ trùng kết quả giữa KNN và FAISS (Jaccard)
+  - **Tốc độ tìm kiếm** (ms/query)
+  - **Recall@K, Precision@K, AP** (Average Precision) – chất lượng retrieval
 - Giao diện web **đẹp, responsive**, hỗ trợ upload + preview ảnh
 - Hoạt động hoàn toàn **offline**, không cần Internet sau khi trích xuất dữ liệu
 
@@ -69,8 +74,8 @@ Image-Retrieval-System/
 | Công nghệ              | Mục đích sử dụng                                  |
 |------------------------|---------------------------------------------------|
 | PyTorch + TorchVision  | Trích xuất đặc trưng bằng ResNet-18 pretrained    |
-| NumPy                  | Xử lý và lưu trữ vector đặc trưng                 |
-| scikit-learn           | KNN truyền thống (để so sánh)                     |
+| **OpenCLIP** (open-clip-torch) | **Tìm ảnh bằng mô tả văn bản** (ảnh & chữ cùng không gian) |
+| NumPy                  | Xử lý, chuẩn hóa L2 & lưu trữ vector đặc trưng     |
 | **FAISS**              | **Tìm kiếm vector siêu nhanh** (chính thức dùng)  |
 | Flask                  | Backend web                                       |
 | HTML/CSS/JS            | Giao diện người dùng đẹp, mượt mà                 |
@@ -116,6 +121,19 @@ uv run python src/feature_extractor.py
 
 > 💡 Lần đầu chạy sẽ mất vài phút (tải dữ liệu + tải trọng số ResNet-18 từ Internet).
 > Những lần sau đã có sẵn `Data/` và `features/` nên **không cần chạy lại**.
+
+### **Bước 2b (tuỳ chọn) — Trích đặc trưng CLIP để bật tìm bằng văn bản**
+
+Muốn dùng tính năng **gõ mô tả ra ảnh**, cần thêm file `features/features_clip.npy`:
+
+```bash
+uv run python src/clip_extractor.py
+```
+
+> ⚙️ Bước này trên CPU **rất chậm** (~1 giờ cho 60k ảnh). Khuyến nghị trích nhanh trên
+> **Kaggle GPU** (~1–2 phút) bằng `kaggle_extract_clip.py` rồi tải `features_clip.npy`
+> về bỏ vào `features/`. Nếu **thiếu** file này, app vẫn chạy bình thường nhưng chỉ
+> **tìm bằng ảnh**; phần tìm bằng mô tả sẽ tự tắt.
 
 ### **Bước 3 — Khởi chạy web server**
 
@@ -191,28 +209,39 @@ docker run --rm -p 5000:5000 -v "$PWD/features:/app/features" \
 
 ---
 
-## 🚀 Nâng cấp nổi bật: Tích hợp FAISS
-Hệ thống sử dụng FAISS (IndexFlatIP + cosine similarity) làm phương pháp tìm kiếm chính thức vì:
+## 🚀 Công nghệ tìm kiếm: FAISS
+Hệ thống dùng **FAISS** (IndexFlatIP + cosine similarity, sau khi L2-normalize) làm phương pháp tìm kiếm chính thức vì:
 
-- Tốc độ: Nhanh hơn KNN 20–50 lần (thường chỉ 1–3 ms/query)
-- Độ chính xác: Recall@10 tương đương hoặc tốt hơn KNN (exact search)
-- Khả năng mở rộng: Dễ dàng xử lý hàng triệu đến tỷ vector
-Mỗi lần tìm kiếm (khi dùng ảnh mẫu), terminal sẽ in ra so sánh:
+- **Tốc độ:** truy vấn thường chỉ 1–3 ms trên 60.000 vector 512 chiều
+- **Độ chính xác:** IndexFlatIP là *exact search* (không nén vector) nên luôn trả về đúng top-K theo cosine
+- **Khả năng mở rộng:** dễ dàng nâng lên index gần đúng (IVF, PQ, HNSW) khi xử lý hàng triệu–tỷ vector
+
+Mỗi lần tìm kiếm bằng ảnh mẫu (có nhãn), terminal in ra thời gian và các chỉ số chất lượng:
 ```bash
 ======================================================================
-   SO SÁNH HIỆU SUẤT TÌM KIẾM (60.000 ảnh)
-   → KNN   : 45.23 ms
-   → FAISS : 1.87 ms
-   → FAISS nhanh hơn: 24.2x
-   → Recall@10 KNN   : 0.0015
-   → Recall@10 FAISS : 0.0015
-   → Độ chính xác tương đương
+   BÁO CÁO TÌM KIẾM  (k=10, lớp lọc=tất cả)
+   → Thời gian tìm kiếm : 1.8700 ms
+   → Precision@10: 0.7 | Recall@10: 0.0012 | AP: 0.83
 ======================================================================
 ```
 
 ---
 
-## 📋 Báo cáo đánh giá (tiêu chí đồ án)
+## 🔤 Tìm bằng văn bản (CLIP)
+
+Ngoài tìm bằng ảnh, hệ thống còn dùng **CLIP** để tìm ảnh từ **mô tả văn bản**:
+
+- CLIP nhúng **ảnh và chữ vào cùng một không gian vector** → có thể so khớp câu mô tả với ảnh trong kho.
+- Toàn bộ kho ảnh được mã hoá sẵn thành `features/features_clip.npy` (xem Bước 2b).
+- Khi gõ mô tả, câu chữ được CLIP mã hoá rồi tìm bằng FAISS giống như tìm bằng ảnh.
+- Hỗ trợ **tiếng Việt** qua bước dịch nhanh Việt→Anh trong [src/clip_model.py](src/clip_model.py) (CLIP gốc là tiếng Anh).
+- Chạy **offline, không cần API key**.
+
+Ví dụ gõ trong khung chat: *"a red truck"*, *"con mèo"*, *"máy bay trên bầu trời"*, *"tìm 5 ảnh con chó"*.
+
+---
+
+## 📋 Báo cáo đánh giá 
 
 Các tiêu chí đánh giá đồ án (xác định vấn đề & chiến lược, chỉ số đo lường, cải tiến thuật toán, đánh giá chất lượng mô hình, thảo luận kết quả, hướng cải thiện, tóm tắt giải pháp, điểm thú vị/khó) được trình bày chi tiết trong:
 
@@ -223,7 +252,6 @@ Các tiêu chí đánh giá đồ án (xác định vấn đề & chiến lượ
 ## 📝 Ghi chú
 - Dự án hoạt động tốt trên CPU, nhưng GPU sẽ nhanh hơn nhiều.
 - Có thể mở rộng dataset khác hoặc model mạnh hơn (ResNet50, ViT…).
-- **Fine-tune ResNet-18:** Chạy notebook `src/Fine_tune_ResNet.ipynb` để huấn luyện ResNet-18 trên CIFAR-10; mô hình lưu tại `model/resnet18_finetuned_cifar10.pt`. Trong `feature_extractor.py` đặt `USE_FINETUNED = True` rồi chạy lại để trích đặc trưng bằng mô hình đã fine-tune (retrieval thường tốt hơn).
 - Có thể mở rộng bằng:
   - Model mạnh hơn (ResNet-50, EfficientNet, ViT)
   - Dataset lớn hơn (ImageNet, LAION)
@@ -232,5 +260,5 @@ Các tiêu chí đánh giá đồ án (xác định vấn đề & chiến lượ
 ---
 
 ## 👨‍💻 Tác giả
-Giang Lê Hoàng - 2005
+Giang Lê Hoàng
 

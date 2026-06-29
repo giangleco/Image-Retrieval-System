@@ -51,13 +51,12 @@ if __name__ == '__main__':
     # ===========================================================
     # 2. KHỞI TẠO MÔ HÌNH 
     # ===========================================================
-    model = models.resnet18(weights="IMAGENET1K_V1")
-    model = torch.nn.Sequential(*list(model.children())[:-1])
-    
     # TỰ ĐỘNG NHẬN DIỆN GPU ĐỂ CHẠY NHANH HƠN
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"--- Đang dùng mô hình PRE-TRAINED gốc của ImageNet. Thiết bị xử lý: {device}")
-        
+
+    model = models.resnet18(weights="IMAGENET1K_V1")
+    model = torch.nn.Sequential(*list(model.children())[:-1])
     model.eval().to(device)
 
     # Hàm lấy màu thật cho ảnh base64

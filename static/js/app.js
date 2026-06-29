@@ -1,80 +1,11 @@
 // static/js/app.js
-let selectedFile = null;
+// Xử lý CLICK ẢNH MẪU (gallery) + hiển thị kết quả vào khu vực #results.
+// Việc upload ảnh / tìm bằng mô tả nay nằm trong khung chat (chat.js).
 
-const fileInput = document.getElementById('fileInput');
-const uploadArea = document.getElementById('uploadArea');
-const preview = document.getElementById('preview');
-const previewImg = document.getElementById('previewImg');
-const clearBtn = document.getElementById('clearBtn');
-const searchBtn = document.getElementById('searchButton');
-const kSelect = document.getElementById('kSelect');
-const classSelect = document.getElementById('classSelect');
-
-// Lấy giá trị tuỳ chọn hiện tại (số K + lọc lớp)
+// Số kết quả mặc định cho click ảnh mẫu
 function getOptions() {
-    return {
-        k: kSelect ? kSelect.value : '10',
-        class_filter: classSelect ? classSelect.value : 'all',
-    };
+    return { k: '10', class_filter: 'all' };
 }
-
-// Chọn file
-fileInput.addEventListener('change', () => {
-    const file = fileInput.files[0];
-    if (file) {
-        selectedFile = file;
-        const reader = new FileReader();
-        reader.onload = e => {
-            previewImg.src = e.target.result;
-            preview.classList.remove('hidden');
-            uploadArea.style.display = 'none';
-            searchBtn.disabled = false;
-        };
-        reader.readAsDataURL(file);
-    }
-});
-
-// Xóa ảnh
-clearBtn.onclick = () => {
-    fileInput.value = '';
-    selectedFile = null;
-    preview.classList.add('hidden');
-    uploadArea.style.display = 'block';
-    searchBtn.disabled = true;
-};
-
-// NÚT TÌM (ảnh upload) — CHẶN HOÀN TOÀN RELOAD
-searchBtn.onclick = function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!selectedFile) return;
-
-    showLoading(true);
-    searchBtn.disabled = true;
-    searchBtn.innerHTML = 'Đang tìm...';
-
-    const opts = getOptions();
-    const fd = new FormData();
-    fd.append('file', selectedFile);
-    fd.append('k', opts.k);
-    fd.append('class_filter', opts.class_filter);
-
-    fetch('/search', { method: 'POST', body: fd })
-        .then(r => r.json())
-        .then(data => {
-            showLoading(false);
-            displayResults(data);
-            searchBtn.disabled = false;
-            searchBtn.innerHTML = 'Tìm lại với ảnh khác';
-        })
-        .catch(() => {
-            showLoading(false);
-            alert('Lỗi server!');
-            searchBtn.disabled = false;
-            searchBtn.innerHTML = 'Thử lại';
-        });
-};
 
 // Tìm bằng ảnh mẫu trong kho (theo index)
 function searchByIndex(idx) {
@@ -99,15 +30,33 @@ function searchByIndex(idx) {
 
 function displayResults(data) {
     document.getElementById('results').classList.remove('hidden');
-    document.getElementById('queryImg').src = "data:image/jpeg;base64," + data.query_image;
+
+    const queryImg = document.getElementById('queryImg');
+    const queryHeading = document.getElementById('queryHeading');
+    const queryLabel = document.getElementById('queryLabel');
+
+    // Tìm bằng văn bản: không có ảnh truy vấn -> hiện mô tả thay cho ảnh
+    if (!data.query_image) {
+        queryImg.classList.add('hidden');
+        queryHeading.textContent = 'Mô tả truy vấn';
+        queryLabel.textContent = data.query_text || '';
+        return finishResults(data);
+    }
+
+    queryImg.classList.remove('hidden');
+    queryHeading.textContent = 'Ảnh truy vấn';
+    queryImg.src = "data:image/jpeg;base64," + data.query_image;
 
     // Nhãn ảnh truy vấn (nếu có)
-    const queryLabel = document.getElementById('queryLabel');
     queryLabel.innerHTML = data.query_label
         ? `Lớp truy vấn: <strong>${data.query_label}</strong>`
         : 'Ảnh upload (không có nhãn)';
 
-    // Tiêu đề danh sách kết quả
+    finishResults(data);
+}
+
+// Render tiêu đề + bảng metric + lưới kết quả (dùng chung cho mọi kiểu truy vấn)
+function finishResults(data) {
     const title = document.getElementById('resultTitle');
     let titleText = `Top ${data.k} kết quả`;
     if (data.class_filter) titleText += ` — chỉ lớp "${data.class_filter}"`;
@@ -133,15 +82,15 @@ function displayResults(data) {
     const grid = document.getElementById('resultGrid');
     grid.innerHTML = '';
     data.results.forEach(item => {
-        // Tô màu nhãn trùng với lớp truy vấn để dễ nhìn
         const match = data.query_label && item.label === data.query_label ? ' match' : '';
+        const sim = (item.similarity != null) ? `<span class="sim">${item.similarity}%</span>` : '';
         grid.innerHTML += `
             <div class="result-item">
                 <span class="rank">${item.rank}</span>
                 <img src="data:image/jpeg;base64,${item.image}">
                 <div class="meta">
                     <span class="label${match}">${item.label}</span>
-                    <span class="sim">${item.similarity}%</span>
+                    ${sim}
                 </div>
             </div>`;
     });

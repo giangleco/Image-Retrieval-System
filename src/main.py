@@ -54,7 +54,7 @@ all_labels = np.load(LABELS_NPY)
 with open(IMAGE_LIST_TXT, "r") as f:
     image_b64_list = [line.strip() for line in f]
 
-# Chuẩn hóa L2 theo từng hàng (tương đương sklearn.preprocessing.normalize)
+# Chuẩn hóa L2 theo từng hàng (để inner product trong FAISS = cosine similarity)
 features_normalized = (
     features / (np.linalg.norm(features, axis=1, keepdims=True) + 1e-12)
 ).astype("float32")
@@ -80,6 +80,37 @@ class_counts = {c: int(len(idxs)) for c, idxs in class_to_indices.items()}
 MAX_K = 50  # số kết quả tối đa cho mỗi truy vấn
 
 # ===========================================================
+# 3c. CLIP: TÌM ẢNH BẰNG VĂN BẢN / ẢNH (tùy chọn — cần features_clip.npy)
+# ===========================================================
+CLIP_FEATURES_NPY = os.path.join(PROJECT_ROOT, "features", "features_clip.npy")
+CLIP_ENABLED = os.path.exists(CLIP_FEATURES_NPY)
+features_clip = None
+index_clip = None
+
+if CLIP_ENABLED:
+    features_clip = np.load(CLIP_FEATURES_NPY, mmap_mode="r").astype("float32")
+    # đảm bảo đã L2-normalize (an toàn nếu file chưa chuẩn hoá)
+    norms = np.linalg.norm(features_clip, axis=1, keepdims=True)
+    features_clip = (features_clip / (norms + 1e-12)).astype("float32")
+    index_clip = faiss.IndexFlatIP(features_clip.shape[1])
+    index_clip.add(features_clip)
+    print(f">>> CLIP index sẵn sàng! ({features_clip.shape[0]} ảnh, dim {features_clip.shape[1]})")
+else:
+    print(">>> (CLIP tắt: chưa có features_clip.npy — chạy clip_extractor.py để bật tìm bằng văn bản)")
+
+# Model CLIP được tải LAZY (chỉ khi có truy vấn đầu tiên) để khởi động nhanh
+_clip = None
+
+def get_clip():
+    """Tải module clip_model 1 lần (lazy)."""
+    global _clip
+    if _clip is None:
+        import clip_model
+        clip_model.load()
+        _clip = clip_model
+    return _clip
+
+# ===========================================================
 # 4. MÔ HÌNH TRÍCH XUẤT ĐẶC TRƯNG ẢNH UPLOAD
 # ===========================================================
 device = torch.device("cpu")
@@ -87,7 +118,6 @@ device = torch.device("cpu")
 model = models.resnet18(weights="IMAGENET1K_V1")
 model = torch.nn.Sequential(*list(model.children())[:-1])
 print(">>> Web đang dùng mô hình PRE-TRAINED để xử lý ảnh upload mới.")
-
 model.eval().to(device)
 
 preprocess = transforms.Compose([
@@ -114,26 +144,36 @@ def _label_name(c):
     c = int(c)
     return CIFAR10_CLASSES[c] if 0 <= c < len(CIFAR10_CLASSES) else str(c)
 
-def run_search(query_feat, k, class_filter=None, exclude_idx=None):
+def run_search(query_feat, k, class_filter=None, exclude_idx=None,
+               index=None, feat_matrix=None):
     """
-    Tìm top-k ảnh giống nhất.
-      query_feat  : vector đặc trưng đã L2-normalize, shape (dim,)
+    Tìm top-k ảnh giống nhất trên một index FAISS + ma trận đặc trưng.
+      query_feat  : vector truy vấn đã L2-normalize, shape (dim,)
       k           : số kết quả mong muốn
       class_filter: None = tìm toàn bộ kho (FAISS); hoặc index lớp 0-9 = chỉ tìm trong lớp đó
       exclude_idx : bỏ qua ảnh này (chính ảnh truy vấn khi chọn từ kho)
+      index/feat_matrix: mặc định dùng ResNet (index_faiss/features_normalized);
+                         truyền vào index_clip/features_clip để tìm trên không gian CLIP.
     Trả về: (indices, scores) — 2 numpy array cùng độ dài <= k
     """
+    if index is None:
+        index = index_faiss
+    if feat_matrix is None:
+        feat_matrix = features_normalized
+
     query_feat = np.asarray(query_feat, dtype="float32").reshape(-1)
     pad = 1 if exclude_idx is not None else 0
 
     if class_filter is None:
         # Tìm toàn bộ kho bằng FAISS (exact, nhanh). Lấy dư 1 để có chỗ loại self.
-        D, I = index_faiss.search(query_feat.reshape(1, -1), k + pad)
+        D, I = index.search(query_feat.reshape(1, -1), k + pad)
         idxs, scores = I[0], D[0]
     else:
         # Chỉ tìm trong ảnh thuộc lớp được chọn -> dot product bằng numpy (kho nhỏ ~6000 ảnh)
         cand = class_to_indices[class_filter]
-        sims = features_normalized[cand] @ query_feat
+        # chỉ giữ các chỉ số nằm trong phạm vi feat_matrix (CLIP có thể trích thiếu)
+        cand = cand[cand < feat_matrix.shape[0]]
+        sims = feat_matrix[cand] @ query_feat
         order = np.argsort(-sims)[: k + pad]
         idxs, scores = cand[order], sims[order]
 
@@ -170,6 +210,31 @@ def compute_metrics(result_labels, query_label, k):
         "k": k,
     }
 
+def build_results(idxs, scores, with_similarity=True):
+    """Dựng list kết quả JSON (ảnh base64 + nhãn + % tương đồng) từ chỉ số & điểm."""
+    results, result_labels = [], []
+    for rank, (i, score) in enumerate(zip(idxs, scores), 1):
+        i = int(i)
+        lab = int(all_labels[i])
+        result_labels.append(lab)
+        item = {
+            "rank": rank,
+            "image": image_b64_list[i],
+            "label": _label_name(lab),
+        }
+        if with_similarity:
+            item["distance"] = round(1 - float(score), 4)
+            item["similarity"] = round(float(score) * 100, 1)
+        results.append(item)
+    return results, result_labels
+
+def clip_text_search(query_text, k, class_filter=None):
+    """Mã hoá câu mô tả bằng CLIP rồi tìm trên index CLIP. Trả về (results, labels)."""
+    qvec = get_clip().encode_text(query_text)            # (512,) đã L2-normalize
+    idxs, scores = run_search(qvec, k, class_filter,
+                              index=index_clip, feat_matrix=features_clip)
+    return build_results(idxs, scores)
+
 # ===========================================================
 # 5. ROUTER (API GIAO DIỆN WEB)
 # ===========================================================
@@ -179,7 +244,49 @@ def home():
         "index.html",
         images=image_b64_list[:300],
         classes=CIFAR10_CLASSES,
+        clip_enabled=CLIP_ENABLED,
     )
+
+@app.route("/text_search", methods=["GET", "POST"])
+def text_search():
+    """Tìm ảnh bằng MÔ TẢ văn bản (CLIP). Vd: q='a red truck', 'con mèo'."""
+    if not CLIP_ENABLED:
+        return jsonify({"error": "Chưa bật CLIP. Hãy tạo features_clip.npy "
+                                 "(chạy clip_extractor.py hoặc trích trên Kaggle)."}), 400
+
+    src = request.form if request.method == "POST" else request.args
+    query_text = (src.get("q") or "").strip()
+    if not query_text:
+        return jsonify({"error": "Vui lòng nhập mô tả cần tìm!"}), 400
+
+    try:
+        k = int(src.get("k", 10))
+    except (TypeError, ValueError):
+        k = 10
+    k = max(1, min(k, MAX_K))
+
+    class_filter = None
+    cf_raw = src.get("class_filter", "all")
+    if cf_raw not in (None, "", "all"):
+        try:
+            cf = int(cf_raw)
+            if 0 <= cf < len(CIFAR10_CLASSES):
+                class_filter = cf
+        except (TypeError, ValueError):
+            class_filter = None
+
+    start = time.time()
+    results, _ = clip_text_search(query_text, k, class_filter)
+    elapsed = time.time() - start
+
+    print(f"\n{'='*70}\n   [TEXT-SEARCH] q={query_text!r} (k={k}) | {elapsed*1000:.1f} ms\n{'='*70}\n")
+    return jsonify({
+        "query_text": query_text,
+        "k": k,
+        "class_filter": CIFAR10_CLASSES[class_filter] if class_filter is not None else None,
+        "search_time_ms": round(elapsed * 1000, 3),
+        "results": results,
+    })
 
 @app.route("/search", methods=["GET", "POST"])
 def search():
@@ -294,6 +401,25 @@ def chat():
     has_image = bool(file and file.filename)
 
     plan = chat_agent.parse_message(message, has_image, max_k=MAX_K)
+
+    # --- Chỉ có CHỮ (không ảnh) + CLIP bật: tìm ảnh theo MÔ TẢ (semantic) ---
+    if (not has_image and CLIP_ENABLED
+            and plan["intent"] in ("browse_class", "need_image") and message.strip()):
+        k = plan["k"]
+        class_filter = plan["class_filter"]
+        start = time.time()
+        results, _ = clip_text_search(message, k, class_filter)
+        elapsed = time.time() - start
+        reply = f"Mình tìm theo mô tả \"{message.strip()}\" — đây là {len(results)} ảnh khớp nhất 👇"
+        print(f"\n{'='*70}\n   [CHAT-CLIP] q={message!r} (k={k}) | {elapsed*1000:.1f} ms\n{'='*70}\n")
+        return jsonify({
+            "reply": reply,
+            "query_image": None,
+            "k": k,
+            "class_filter": CIFAR10_CLASSES[class_filter] if class_filter is not None else None,
+            "search_time_ms": round(elapsed * 1000, 3),
+            "results": results,
+        })
 
     # --- Chỉ có chữ + nhắc tên lớp: duyệt thẳng ảnh của lớp đó trong kho (không cần ảnh) ---
     if plan["intent"] == "browse_class":
