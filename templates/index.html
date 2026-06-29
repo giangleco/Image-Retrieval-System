@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CIFAR-10 Image Search | ResNet18 + KNN</title>
+    <title>CIFAR-10 Image Search | ResNet18 + FAISS</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -12,44 +12,54 @@
     <div class="container">
         <header>
             <h1>CIFAR-10 Image Search</h1>
-            <p>Upload ảnh hoặc click ảnh mẫu để tìm 10 ảnh tương tự nhất </p>
+            <p>Trò chuyện với trợ lý: <b>đính kèm ảnh</b> hoặc <b>gõ mô tả</b> để tìm ảnh tương tự</p>
         </header>
 
-        <!-- KHUNG UPLOAD + PREVIEW -->
-        <div class="upload-box">
-            <input type="file" id="fileInput" accept="image/*">
-            <div class="upload-area" id="uploadArea">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <h3>Kéo & thả ảnh vào đây</h3>
-                <p>hoặc <span class="click-here">click để chọn</span></p>
-            </div>
-            <div class="preview hidden" id="preview">
-                <img id="previewImg" src="" alt="Preview">
-                <button type="button" id="clearBtn" class="clear-btn"></button>
+        <!-- ===== KHUNG CHAT DUY NHẤT: upload ảnh HOẶC gõ mô tả ===== -->
+        <div class="chat-section">
+            <h2><i class="fas fa-robot"></i> Trợ lý tìm ảnh</h2>
+            <p class="chat-hint">
+                📎 Bấm biểu tượng ảnh để <b>đính kèm ảnh</b> và tìm ảnh giống —
+                <b>hoặc</b> chỉ cần <b>gõ mô tả</b>{% if clip_enabled %}
+                (vd <em>"a red truck"</em>, <em>"con mèo"</em>, <em>"máy bay trên bầu trời"</em>){% endif %}.
+                Có thể nói kèm số lượng &amp; lớp, vd <em>"tìm 20 ảnh con chó"</em>.
+            </p>
+
+            <div id="chatLog" class="chat-log"></div>
+
+            <div class="chat-input-row">
+                <label class="chat-file-btn" title="Đính kèm ảnh">
+                    <i class="fas fa-image"></i>
+                    <input type="file" id="chatFileInput" accept="image/*" hidden>
+                </label>
+                <span id="chatFileName" class="chat-file-name"></span>
+                <input type="text" id="chatText" class="chat-text"
+                       placeholder='Gõ mô tả hoặc yêu cầu, vd: "tìm 10 ảnh giống ảnh này"'>
+                <button type="button" id="chatSend" class="chat-send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
             </div>
         </div>
 
-        <!-- NÚT TÌM ẢNH — TÁCH RIÊNG, SIÊU ỔN ĐỊNH -->
-        <div class="search-action">
-            <button type="button" id="searchButton" class="big-search-btn" disabled>
-                <i class="fas fa-search"></i> TÌM ẢNH TƯƠNG TỰ
-            </button>
-        </div>
-
-        <!-- Loading & Results -->
+        <!-- Loading & Results (dùng khi click ảnh mẫu bên dưới) -->
         <div id="loading" class="loading hidden">
             <i class="fas fa-spinner fa-spin"></i>
             <p>Đang tìm ảnh tương tự...</p>
         </div>
 
         <div id="results" class="results hidden">
-            <h2>Ảnh truy vấn</h2>
+            <h2 id="queryHeading">Ảnh truy vấn</h2>
             <img id="queryImg" class="query-img" alt="Query">
-            <h2>Top 10 kết quả</h2>
+            <div id="queryLabel" class="query-label"></div>
+
+            <!-- Bảng chỉ số đánh giá (chỉ hiện khi tìm bằng ảnh mẫu có nhãn) -->
+            <div id="metrics" class="metrics hidden"></div>
+
+            <h2 id="resultTitle">Kết quả</h2>
             <div id="resultGrid" class="result-grid"></div>
         </div>
 
-        <!-- Gallery mẫu -->
+        <!-- Gallery mẫu: click để tìm nhanh (kèm chỉ số đánh giá) -->
         <div class="gallery-section">
             <h2>Hoặc click ảnh mẫu bên dưới</h2>
             <div class="gallery">
@@ -63,5 +73,6 @@
     </div>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 </html>
