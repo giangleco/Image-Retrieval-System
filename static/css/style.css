@@ -22,8 +22,6 @@ header p { font-size: 1.3rem; opacity: 0.9; }
     backdrop-filter: blur(12px);
 }
 .chat-section h2 { font-size: 1.5rem; margin-bottom: 6px; }
-.chat-hint { font-size: 0.95rem; opacity: 0.85; margin-bottom: 16px; }
-.chat-hint em { color: #00ffff; }
 
 .chat-log {
     text-align: left;
