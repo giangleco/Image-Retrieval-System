@@ -1,4 +1,13 @@
 import os
+import sys
+from pathlib import Path
+
+# Script chạy trực tiếp (uv run python src/scripts/...) nên phải tự đưa src/ vào
+# đường dẫn import thì mới dùng chung được cấu hình ở core/config.py.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from core import config
+
 # Bỏ qua xung đột thư viện (Intel MKL, OpenMP) trên Windows
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -13,14 +22,13 @@ from io import BytesIO
 # ===========================================================
 # 1. CẤU HÌNH ĐƯỜNG DẪN & TÊN FILE TỰ ĐỘNG
 # ===========================================================
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "features")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+# Mọi đường dẫn lấy từ core/config.py — không tự dựng lại
+config.FEATURES_DIR.mkdir(parents=True, exist_ok=True)
 
-feature_filename = "features.npy"
-FEATURES_PATH = os.path.join(OUTPUT_DIR, feature_filename)
-IMAGELIST_PATH = os.path.join(OUTPUT_DIR, "image_list.txt")
-LABELS_PATH = os.path.join(OUTPUT_DIR, "labels.npy")
+feature_filename = config.FEATURES_NPY.name
+FEATURES_PATH = config.FEATURES_NPY
+IMAGELIST_PATH = config.IMAGE_LIST_TXT
+LABELS_PATH = config.LABELS_NPY
 
 if __name__ == '__main__':
     print(">>> BẮT ĐẦU TRÍCH XUẤT ĐẶC TRƯNG CIFAR-10...")
@@ -35,7 +43,7 @@ if __name__ == '__main__':
     ])
 
     # Tải dữ liệu
-    DATA_ROOT = os.path.join(PROJECT_ROOT, "Data")
+    DATA_ROOT = str(config.DATA_DIR)
     # download=True: tự tải CIFAR-10 (~170MB) về Data/ nếu chưa có; có rồi thì bỏ qua
     trainset = torchvision.datasets.CIFAR10(root=DATA_ROOT, train=True, download=True, transform=transform)
     testset  = torchvision.datasets.CIFAR10(root=DATA_ROOT, train=False, download=True, transform=transform)

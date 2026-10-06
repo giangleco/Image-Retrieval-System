@@ -4,7 +4,7 @@ venv/
 env/
 
 # 2. Dữ liệu gốc CIFAR-10 (Có thể tự tải lại bằng code, không nên push lên Git)
-/Data/*
+/data/*
 
 # 3. Kết quả trích xuất đặc trưng (Chứa file .npy và base64 rất nặng)
 /features/*
@@ -13,6 +13,10 @@ env/
 model/
 
 
+
+# 5. Biến môi trường chứa API key (KHÔNG push key thật lên Git!)
+.env
+.env.local
 
 # 6. Các file rác của Hệ điều hành (MacOS/Windows)
 .DS_Store

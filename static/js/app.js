@@ -1,102 +1,148 @@
-// static/js/app.js
-// Xử lý CLICK ẢNH MẪU (gallery) + hiển thị kết quả vào khu vực #results.
-// Việc upload ảnh / tìm bằng mô tả nay nằm trong khung chat (chat.js).
+// static/js/app.js — thanh trạng thái, gallery ảnh mẫu, và khu hiển thị KẾT QUẢ.
+//
+// Khác bản cũ: mọi kết quả (dù đến từ chat hay từ click ảnh mẫu) đều đổ vào CÙNG
+// một khu ở cột phải qua Results.render(). Trước đây chat tự vẽ lưới ảnh riêng
+// bên trong bong bóng chat, nên có hai đoạn code vẽ lưới gần giống hệt nhau.
 
-// Số kết quả mặc định cho click ảnh mẫu
-function getOptions() {
-    return { k: '10', class_filter: 'all' };
+const $ = (id) => document.getElementById(id);
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : s;
+  return d.innerHTML;
 }
 
-// Tìm bằng ảnh mẫu trong kho (theo index)
-function searchByIndex(idx) {
-    const opts = getOptions();
-    const params = new URLSearchParams({
-        idx: idx,
-        k: opts.k,
-        class_filter: opts.class_filter,
-    });
-    showLoading(true);
-    fetch(`/search?${params.toString()}`)
-        .then(r => r.json())
-        .then(data => {
-            showLoading(false);
-            displayResults(data);
-        })
-        .catch(() => {
-            showLoading(false);
-            alert('Lỗi server!');
-        });
-}
+/* ===================== KHU KẾT QUẢ (dùng chung) ===================== */
+const Results = {
+  loading(on) {
+    $('resultsLoading').hidden = !on;
+    if (on) { $('resultsEmpty').hidden = true; $('resultsBody').hidden = true; }
+  },
 
-function displayResults(data) {
-    document.getElementById('results').classList.remove('hidden');
+  error(msg) {
+    this.loading(false);
+    $('resultsBody').hidden = true;
+    const box = $('resultsEmpty');
+    box.hidden = false;
+    box.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>
+                     <p>Không tìm được</p><span>${escapeHtml(msg)}</span>`;
+  },
 
-    const queryImg = document.getElementById('queryImg');
-    const queryHeading = document.getElementById('queryHeading');
-    const queryLabel = document.getElementById('queryLabel');
+  render(data) {
+    this.loading(false);
+    $('resultsEmpty').hidden = true;
+    $('resultsBody').hidden = false;
 
-    // Tìm bằng văn bản: không có ảnh truy vấn -> hiện mô tả thay cho ảnh
-    if (!data.query_image) {
-        queryImg.classList.add('hidden');
-        queryHeading.textContent = 'Mô tả truy vấn';
-        queryLabel.textContent = data.query_text || '';
-        return finishResults(data);
-    }
+    // --- dòng mô tả ngắn trên tiêu đề ---
+    const bits = [`${data.results.length} ảnh`];
+    if (data.class_filter) bits.push(`lớp "${data.class_filter}"`);
+    if (data.search_time_ms != null) bits.push(`${data.search_time_ms} ms`);
+    $('resultMeta').textContent = bits.join(' · ');
 
-    queryImg.classList.remove('hidden');
-    queryHeading.textContent = 'Ảnh truy vấn';
-    queryImg.src = "data:image/jpeg;base64," + data.query_image;
-
-    // Nhãn ảnh truy vấn (nếu có)
-    queryLabel.innerHTML = data.query_label
-        ? `Lớp truy vấn: <strong>${data.query_label}</strong>`
-        : 'Ảnh upload (không có nhãn)';
-
-    finishResults(data);
-}
-
-// Render tiêu đề + bảng metric + lưới kết quả (dùng chung cho mọi kiểu truy vấn)
-function finishResults(data) {
-    const title = document.getElementById('resultTitle');
-    let titleText = `Top ${data.k} kết quả`;
-    if (data.class_filter) titleText += ` — chỉ lớp "${data.class_filter}"`;
-    if (data.search_time_ms != null) titleText += ` (${data.search_time_ms} ms)`;
-    title.textContent = titleText;
-
-    // Bảng chỉ số đánh giá
-    const metricsBox = document.getElementById('metrics');
-    if (data.metrics) {
-        const m = data.metrics;
-        metricsBox.classList.remove('hidden');
-        metricsBox.innerHTML = `
-            <div class="metric-card"><span class="metric-val">${m.precision}</span><span class="metric-name">Precision@${m.k}</span></div>
-            <div class="metric-card"><span class="metric-val">${m.recall}</span><span class="metric-name">Recall@${m.k}</span></div>
-            <div class="metric-card"><span class="metric-val">${m.ap}</span><span class="metric-name">Average Precision</span></div>
-            <div class="metric-card"><span class="metric-val">${m.num_hits}/${m.k}</span><span class="metric-name">Đúng lớp</span></div>`;
+    // --- khối truy vấn: ảnh hoặc câu mô tả ---
+    const img = $('queryImg');
+    if (data.query_image) {
+      img.hidden = false;
+      img.src = `data:image/jpeg;base64,${data.query_image}`;
+      $('queryKind').textContent = 'Ảnh truy vấn';
+      $('queryValue').innerHTML = data.query_label
+        ? `Nhãn<span class="tag">${escapeHtml(data.query_label)}</span>`
+        : 'Ảnh tải lên <span style="color:var(--text-3);font-weight:400">(không có nhãn)</span>';
     } else {
-        metricsBox.classList.add('hidden');
-        metricsBox.innerHTML = '';
+      img.hidden = true;
+      img.removeAttribute('src');
+      $('queryKind').textContent = 'Mô tả truy vấn';
+      $('queryValue').textContent = data.query_text || '—';
     }
 
-    // Lưới kết quả
-    const grid = document.getElementById('resultGrid');
-    grid.innerHTML = '';
-    data.results.forEach(item => {
-        const match = data.query_label && item.label === data.query_label ? ' match' : '';
-        const sim = (item.similarity != null) ? `<span class="sim">${item.similarity}%</span>` : '';
-        grid.innerHTML += `
-            <div class="result-item">
-                <span class="rank">${item.rank}</span>
-                <img src="data:image/jpeg;base64,${item.image}">
-                <div class="meta">
-                    <span class="label${match}">${item.label}</span>
-                    ${sim}
-                </div>
-            </div>`;
-    });
-    document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+    // --- chỉ số đánh giá (chỉ có khi truy vấn mang nhãn) ---
+    const mBox = $('metrics');
+    if (data.metrics) {
+      const m = data.metrics;
+      // Số nguyên (1, 0) hiện thành "1.00" cho đồng bộ với "0.0017" bên cạnh
+      const fmt = (v) => (Number.isInteger(v) ? v.toFixed(2) : String(v));
+      mBox.hidden = false;
+      mBox.innerHTML = [
+        [fmt(m.precision), `Precision@${m.k}`],
+        [fmt(m.recall), `Recall@${m.k}`],
+        [fmt(m.ap), 'Average Precision'],
+        [`${m.num_hits}/${m.k}`, 'Đúng lớp'],
+      ].map(([v, name]) =>
+        `<div class="metric"><div class="metric__val">${v}</div>
+         <div class="metric__name">${name}</div></div>`).join('');
+    } else {
+      mBox.hidden = true;
+      mBox.innerHTML = '';
+    }
+
+    // --- lưới ảnh kết quả ---
+    $('resultGrid').innerHTML = data.results.map((it) => {
+      const match = data.query_label && it.label === data.query_label ? ' is-match' : '';
+      const sim = it.similarity != null ? `<span class="card__sim">${it.similarity}%</span>` : '';
+      return `<article class="card">
+          <span class="card__rank">${it.rank}</span>
+          <img class="card__img" src="data:image/jpeg;base64,${it.image}"
+               alt="${escapeHtml(it.label)}" title="#${it.index} · ${escapeHtml(it.label)}">
+          <div class="card__meta">
+            <span class="card__label${match}">${escapeHtml(it.label)}</span>${sim}
+          </div>
+        </article>`;
+    }).join('');
+  },
+};
+
+/* ===================== THANH TRẠNG THÁI ===================== */
+async function initStatus() {
+  const box = $('status');
+  try {
+    const h = await Api.health();
+    const chips = [
+      ['chip--ok', `${h.num_images.toLocaleString('vi-VN')} ảnh`],
+      h.clip_enabled ? ['chip--ok', 'tìm bằng chữ'] : ['chip--off', 'tìm bằng chữ: tắt'],
+      ['chip', `chatbot: ${h.chat_providers[0]}`],
+    ];
+    box.innerHTML = chips
+      .map(([cls, text]) => `<span class="chip ${cls}">${escapeHtml(text)}</span>`)
+      .join('');
+  } catch (e) {
+    box.innerHTML = `<span class="chip chip--err">mất kết nối API</span>`;
+    console.error(e);
+  }
 }
 
-function showLoading(show) {
-    document.getElementById('loading').classList.toggle('hidden', !show);
+/* ===================== GALLERY ẢNH MẪU ===================== */
+async function loadGallery() {
+  const gallery = $('gallery');
+  try {
+    const data = await Api.images(300);
+    gallery.innerHTML = '';
+    data.items.forEach((item) => {
+      const img = new Image();
+      img.src = `data:image/jpeg;base64,${item.image}`;
+      img.loading = 'lazy';
+      img.alt = item.label;
+      img.title = `#${item.index} · ${item.label}`;
+      img.addEventListener('click', () => searchByIndex(item.index, img));
+      gallery.appendChild(img);
+    });
+  } catch (e) {
+    gallery.innerHTML = `<p class="gallery__error">Không tải được ảnh: ${escapeHtml(e.message)}</p>`;
+  }
 }
+
+async function searchByIndex(idx, imgEl) {
+  document.querySelectorAll('.gallery img.is-active').forEach((el) => el.classList.remove('is-active'));
+  if (imgEl) imgEl.classList.add('is-active');
+
+  Results.loading(true);
+  try {
+    Results.render(await Api.similar(idx, { k: 10 }));
+  } catch (e) {
+    Results.error(e.message);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initStatus();
+  loadGallery();
+});

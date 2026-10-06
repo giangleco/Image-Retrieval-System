@@ -1,6 +1,5 @@
 # Môi trường ảo & cache (sẽ được tạo lại trong image)
 .venv/
-ML/
 __pycache__/
 *.py[cod]
 .ruff_cache/
@@ -10,12 +9,13 @@ __pycache__/
 .gitignore
 
 # Dữ liệu nặng — KHÔNG nhúng vào image, sẽ mount qua volume lúc chạy
-Data/
+data/
 features/
-model/
 
-# Tài liệu không cần cho runtime
+# Tài liệu & báo cáo — không cần cho runtime
+docs/
 *.docx
+*.pdf
 *.md
 !README.md
 

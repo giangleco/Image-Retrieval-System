@@ -11,7 +11,9 @@ Ví dụ: "Tìm cho tôi 10 hình ảnh giống hình trên" -> {intent: search,
 """
 import re
 
-DEFAULT_K = 10
+from core import config
+
+DEFAULT_K = config.DEFAULT_K   # nguồn duy nhất: core/config.py
 
 # Bản đồ từ khoá (tiếng Việt + Anh) -> index lớp CIFAR-10.
 # Đặt cụm dài/đặc thù lên trước để ưu tiên khớp đúng (vd "xe tải" trước "xe hơi").
@@ -37,11 +39,16 @@ VN_NUMBERS = {
 
 SEARCH_KEYWORDS = [
     "tìm", "kiếm", "search", "find", "giống", "tương tự",
-    "similar", "retrieve", "tra cứu", "lookup",
+    "similar", "retrieve", "tra cứu", "lookup", "cho tôi xem", "hiển thị",
+    "có ảnh", "xem ảnh",
 ]
+# Chào hỏi / hỏi năng lực / cảm ơn / nói chuyện phiếm -> KHÔNG tìm ảnh
 GREETING_KEYWORDS = [
-    "xin chào", "chào", "hello", "hi", "giúp", "help",
-    "làm được gì", "hướng dẫn", "bạn là ai",
+    "xin chào", "chào", "hello", "hi", "hey",
+    "giúp", "help", "hướng dẫn", "cách dùng", "dùng thế nào", "dùng sao", "dùng ntn",
+    "làm được gì", "làm gì", "có thể làm", "làm được", "chức năng", "tính năng",
+    "bạn là ai", "là ai", "bạn là gì", "giới thiệu", "bạn tên",
+    "cảm ơn", "cám ơn", "thanks", "thank you",
 ]
 
 
@@ -52,7 +59,8 @@ def parse_k(message, default=DEFAULT_K, max_k=50):
         return max(1, min(int(m.group(1)), max_k))
     low = (message or "").lower()
     for word, val in VN_NUMBERS.items():
-        if word in low:
+        # dùng ranh giới từ để tránh khớp nhầm (vd "ba" trong "máy bay")
+        if re.search(rf"\b{word}\b", low):
             return max(1, min(val, max_k))
     return default
 
@@ -70,10 +78,11 @@ def parse_class(message):
 def parse_message(message, has_image, max_k=50):
     """
     Phân tích câu lệnh -> dict {intent, k, class_filter}.
-      - Có ảnh                       => search (tìm theo độ tương đồng).
-      - Không ảnh + có nhắc tên lớp  => browse_class (duyệt ảnh của lớp đó trong kho).
-      - Không ảnh + lời chào/hỏi     => greeting.
-      - Không ảnh + ý tìm nhưng không rõ lớp => need_image (nhắc người dùng tải ảnh).
+      - Có ảnh                        => search (tìm theo độ tương đồng ảnh).
+      - Không ảnh + lời chào/hỏi/cảm ơn => greeting (KHÔNG tìm ảnh).
+      - Không ảnh + có nhắc tên lớp   => browse_class (ảnh của lớp đó trong kho).
+      - Không ảnh + mô tả nội dung    => text_search (tìm bằng CLIP theo mô tả).
+      - Không ảnh + câu quá ngắn/mơ hồ => need_image (nhắc người dùng tải ảnh / gõ rõ hơn).
     """
     message = (message or "").strip()
     low = message.lower()
@@ -84,12 +93,17 @@ def parse_message(message, has_image, max_k=50):
     if has_image:
         return {"intent": "search", "k": k, "class_filter": cls}
 
-    # Không có ảnh nhưng nhắc tên một lớp => duyệt ảnh của lớp đó (không cần ảnh)
-    if cls is not None:
-        return {"intent": "browse_class", "k": k, "class_filter": cls}
-
-    # Không ảnh, không rõ lớp
+    # Chào hỏi / hỏi năng lực / cảm ơn => KHÔNG tìm ảnh (ưu tiên kiểm tra trước)
     if not message or any(kw in low for kw in GREETING_KEYWORDS):
         return {"intent": "greeting", "k": DEFAULT_K, "class_filter": None}
 
+    # Nhắc tên một lớp => duyệt/tìm ảnh của lớp đó
+    if cls is not None:
+        return {"intent": "browse_class", "k": k, "class_filter": cls}
+
+    # Có ý tìm kiếm rõ ràng, hoặc câu đủ dài (>=2 từ) => coi như mô tả để tìm bằng CLIP
+    if any(kw in low for kw in SEARCH_KEYWORDS) or len(low.split()) >= 2:
+        return {"intent": "text_search", "k": k, "class_filter": None}
+
+    # Câu quá ngắn/mơ hồ (1 từ lạ) => nhắc người dùng
     return {"intent": "need_image", "k": k, "class_filter": None}

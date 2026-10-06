@@ -11,9 +11,18 @@ services:
     volumes:
       # Mount dữ liệu nặng từ host vào container (KHÔNG nhúng trong image).
       # Nhờ vậy, file sinh ra trong container vẫn được lưu lại trên máy host.
-      - ./Data:/app/Data          # bộ CIFAR-10 (tự tải khi chạy extractor)
+      - ./data:/app/data          # bộ CIFAR-10 (tự tải khi chạy extractor)
       - ./features:/app/features  # vector đặc trưng (extractor sinh ra)
     environment:
       - PORT=5000
       - FLASK_DEBUG=0             # tắt chế độ debug khi chạy trong container
+      # Chatbot đa provider (tùy chọn): lấy từ shell/file .env của máy host.
+      # Không đặt gì -> chatbot tự chạy rule-based (offline).
+      - CHAT_PROVIDER=${CHAT_PROVIDER:-auto}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
+      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT:-}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-2024-10-21}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
     restart: unless-stopped

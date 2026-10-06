@@ -1,5 +1,6 @@
 """
-Bộ mã hoá CLIP dùng chung cho cả trích xuất (clip_extractor.py) và truy vấn (main.py).
+Bộ mã hoá CLIP dùng chung cho cả trích xuất (scripts/extract_clip.py)
+và truy vấn lúc chạy (core/retrieval.py).
 
 CLIP nhúng ẢNH và VĂN BẢN vào cùng một không gian vector 512 chiều, nên có thể:
   - tìm ảnh giống một ẢNH  (encode_image)
@@ -18,7 +19,6 @@ import open_clip
 
 MODEL_NAME = os.environ.get("CLIP_MODEL", "ViT-B-32")
 PRETRAINED = os.environ.get("CLIP_PRETRAINED", "openai")
-EMBED_DIM = 512  # ViT-B-32
 
 _DEVICE = torch.device("cpu")
 _model = None

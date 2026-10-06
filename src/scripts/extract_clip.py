@@ -1,27 +1,34 @@
 """
 Trích xuất embedding CLIP cho toàn bộ ảnh CIFAR-10 -> features/features_clip.npy
 
-Thứ tự ảnh GIỮ NGUYÊN như feature_extractor.py (train rồi test, shuffle=False),
+Thứ tự ảnh GIỮ NGUYÊN như extract_resnet.py (train rồi test, shuffle=False),
 nên chỉ số i trong features_clip.npy khớp với image_list.txt và labels.npy đã có.
-=> Chạy feature_extractor.py TRƯỚC (để có image_list.txt + labels.npy), rồi chạy file này.
+=> Chạy extract_resnet.py TRƯỚC (để có image_list.txt + labels.npy), rồi chạy file này.
 
 Mẹo: trên CPU rất chậm (~1 giờ cho 60k ảnh). Có thể trích một phần để thử nhanh:
-    CLIP_MAX_IMAGES=6000 uv run python src/clip_extractor.py
+    CLIP_MAX_IMAGES=6000 uv run python src/scripts/extract_clip.py
 """
 import os
+import sys
+from pathlib import Path
+
+# Script chạy trực tiếp (uv run python src/scripts/...) nên phải tự đưa src/ vào
+# đường dẫn import thì mới dùng chung được cấu hình ở core/config.py.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from core import config
+
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 import numpy as np
 import torchvision
 from torch.utils.data import ConcatDataset
 
-import clip_model
+from embedding import clip_model
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DATA_ROOT = os.path.join(PROJECT_ROOT, "Data")
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, "features")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-CLIP_FEATURES_PATH = os.path.join(OUTPUT_DIR, "features_clip.npy")
+DATA_ROOT = str(config.DATA_DIR)
+config.FEATURES_DIR.mkdir(parents=True, exist_ok=True)
+CLIP_FEATURES_PATH = config.CLIP_FEATURES_NPY
 
 BATCH_SIZE = 128
 

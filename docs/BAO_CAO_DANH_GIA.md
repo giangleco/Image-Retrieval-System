@@ -21,7 +21,7 @@
    Dùng **FAISS IndexFlatIP**: tích vô hướng trên vector đã L2-normalize tương đương cosine similarity. Đây là *exact search* (không nén vector) nên luôn trả về đúng top-K theo cosine, lại có tốc độ truy vấn rất cao.
 
 4. **Triển khai phục vụ (serving)**  
-   Backend Flask nhận ảnh (upload hoặc chỉ số ảnh trong kho), gọi pipeline trích đặc trưng + tìm kiếm, trả về top-10 ảnh và các chỉ số đánh giá (khi có nhãn).
+   Backend REST API (FastAPI) nhận ảnh (upload hoặc chỉ số ảnh trong kho), gọi pipeline trích đặc trưng + tìm kiếm, trả về top-10 ảnh và các chỉ số đánh giá (khi có nhãn) dưới dạng JSON.
 
 ---
 
@@ -112,11 +112,11 @@ Các chỉ số dùng để đo **chất lượng truy xuất** của hệ thố
 
 ## 10. Tóm tắt giải pháp end-to-end
 
-1. **Dữ liệu:** CIFAR-10 (60.000 ảnh) – tải và tiền xử lý (resize 224×224, chuẩn hóa ImageNet) trong `feature_extractor.py`.  
-2. **Đặc trưng:** Trích vector 512 chiều bằng ResNet-18 (bỏ lớp FC), lưu `features.npy`, `labels.npy` và `image_list.txt` (base64) – script `feature_extractor.py`.  
+1. **Dữ liệu:** CIFAR-10 (60.000 ảnh) – tải và tiền xử lý (resize 224×224, chuẩn hóa ImageNet) trong `src/scripts/extract_resnet.py`.  
+2. **Đặc trưng:** Trích vector 512 chiều bằng ResNet-18 (bỏ lớp FC), lưu `features.npy`, `labels.npy` và `image_list.txt` (base64) – script `src/scripts/extract_resnet.py`.  
 3. **Chuẩn hóa:** L2-normalize toàn bộ vector; FAISS dùng IndexFlatIP (inner product = cosine khi đã L2).  
 4. **Tìm kiếm:** Với mỗi truy vấn, trích đặc trưng (nếu là ảnh mới) rồi tìm top-10 bằng FAISS; tính Recall@10, Precision@10, AP và đo thời gian khi có nhãn.  
-5. **Serving:** Flask backend (`main.py`) nhận upload hoặc chỉ số ảnh, trả về top-10 ảnh và (trong terminal) các chỉ số đánh giá; giao diện web hiển thị ảnh truy vấn và kết quả.
+5. **Serving:** Backend REST API bằng FastAPI (`src/api/`) nhận upload hoặc chỉ số ảnh, trả về top-10 ảnh kèm chỉ số đánh giá dưới dạng JSON; giao diện web trong `static/` gọi API bằng `fetch` để hiển thị.
 
 ---
 

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIFAR-10 Image Search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ===================== THANH TRÊN ===================== -->
+<header class="topbar">
+  <div class="topbar__inner">
+    <div class="brand">
+      <span class="brand__mark"><i class="fa-solid fa-layer-group"></i></span>
+      <span class="brand__text">
+        <strong>CIFAR-10 Search</strong>
+        <small>ResNet-18 · CLIP · FAISS</small>
+      </span>
+    </div>
+
+    <div class="status" id="status">
+      <span class="chip chip--loading" id="chipImages">đang kết nối…</span>
+    </div>
+
+    <a class="topbar__link" href="/docs" target="_blank" rel="noopener">
+      <i class="fa-solid fa-book"></i><span>API</span>
+    </a>
+  </div>
+</header>
+
+<!-- ===================== KHU LÀM VIỆC 2 CỘT ===================== -->
+<main class="workspace">
+
+  <!-- CỘT TRÁI: trợ lý -->
+  <section class="panel panel--chat" aria-label="Trợ lý tìm ảnh">
+    <div class="panel__head">
+      <h2>Trợ lý</h2>
+      <span class="panel__hint">đính kèm ảnh hoặc gõ mô tả</span>
+    </div>
+
+    <div class="chat-log" id="chatLog">
+      <div class="chat-intro" id="chatIntro">
+        <p>Thử một trong các câu sau:</p>
+        <div class="suggestions">
+          <button class="suggestion" type="button">tìm 10 ảnh con mèo</button>
+          <button class="suggestion" type="button">máy bay trên bầu trời</button>
+          <button class="suggestion" type="button">a red truck</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">
+      <div class="composer__file" id="filePreview" hidden>
+        <img id="filePreviewImg" alt="">
+        <span id="chatFileName"></span>
+        <button type="button" id="fileClear" aria-label="Bỏ ảnh đính kèm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="composer__row">
+        <label class="icon-btn" title="Đính kèm ảnh">
+          <i class="fa-solid fa-paperclip"></i>
+          <input type="file" id="chatFileInput" accept="image/*" hidden>
+        </label>
+        <input type="text" id="chatText" class="composer__input"
+               placeholder="Gõ mô tả, ví dụ: tìm 10 ảnh con mèo" autocomplete="off">
+        <button type="button" id="chatSend" class="send-btn" aria-label="Gửi">
+          <i class="fa-solid fa-arrow-up"></i>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CỘT PHẢI: kết quả -->
+  <section class="panel panel--results" aria-label="Kết quả tìm kiếm">
+    <div class="panel__head">
+      <h2>Kết quả</h2>
+      <span class="panel__hint" id="resultMeta"></span>
+    </div>
+
+    <!-- trạng thái rỗng -->
+    <div class="empty" id="resultsEmpty">
+      <i class="fa-regular fa-images"></i>
+      <p>Chưa có kết quả</p>
+      <span>Gõ mô tả bên trái, hoặc bấm một ảnh mẫu bên dưới</span>
+    </div>
+
+    <!-- đang tìm -->
+    <div class="empty" id="resultsLoading" hidden>
+      <i class="fa-solid fa-circle-notch fa-spin"></i>
+      <p>Đang tìm…</p>
+    </div>
+
+    <div id="resultsBody" hidden>
+      <!-- truy vấn -->
+      <div class="query" id="queryCard">
+        <img class="query__img" id="queryImg" alt="Ảnh truy vấn" hidden>
+        <div class="query__info">
+          <span class="query__kind" id="queryKind">Ảnh truy vấn</span>
+          <span class="query__value" id="queryValue"></span>
+        </div>
+      </div>
+
+      <!-- chỉ số đánh giá -->
+      <div class="metrics" id="metrics" hidden></div>
+
+      <!-- lưới ảnh -->
+      <div class="result-grid" id="resultGrid"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== ẢNH MẪU ===================== -->
+<section class="gallery-section">
+  <div class="gallery-head">
+    <h2>Ảnh mẫu trong kho</h2>
+    <span class="panel__hint">bấm một ảnh để tìm ảnh tương tự — có kèm Precision / Recall / AP</span>
+  </div>
+  <div class="gallery" id="gallery"></div>
+</section>
+
+<footer class="footer">
+  CIFAR-10 Image Retrieval · ResNet-18 + CLIP + FAISS
+</footer>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/app.js"></script>
+<script src="/static/js/chat.js"></script>
+</body>
+</html>
